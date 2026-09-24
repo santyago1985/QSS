@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QSS Family — Survival & Ecosystem</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            color: #ffffff;
+            background-color: #0b0f19;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Адаптивний контейнер мапи */
+        .interactive-scene {
+            position: relative;
+            width: 100vw;
+            max-width: 1777.78px;
+            aspect-ratio: 16 / 9;
+            background: url('day.jpg') center/cover no-repeat;
+            transition: background 2s ease-in-out;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        body.is-night .interactive-scene {
+            background: linear-gradient(rgba(11, 15, 25, 0.4), rgba(11, 15, 25, 0.4)), url('night.jpg') center/cover no-repeat;
+        }
+
+        /* Клікабельні зони будівель (зум картинки без рамки) */
+        .building-spot {
+            position: absolute;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .building-spot::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: inherit;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.4s ease;
+            z-index: -1;
+        }
+
+        .building-spot:hover::before {
+            transform: scale(1.12);
+        }
+
+        .building-name {
+            opacity: 0;
+            transform: translateY(10px);
+            background: rgba(15, 23, 42, 0.95);
+            color: #38bdf8;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 30;
+        }
+
+        body.is-night .building-name {
+            color: #f87171;
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+
+        .building-spot:hover .building-name {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- МОДАЛЬНЕ ВІКНО WHITEPAPER (Текстовий гайд) --- */
+        .wp-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .wp-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .wp-modal-box {
+            background: rgba(15, 23, 42, 0.98); 
+            border: 2px solid #38bdf8;
+            padding: 30px; 
+            border-radius: 16px; 
+            width: 80vw; 
+            max-width: 850px; 
+            height: 80vh;
+            box-shadow: 0 20px 50px rgba(56, 189, 248, 0.3); 
+            display: flex; 
+            flex-direction: column; 
+            position: relative;
+            text-align: left;
+            color: #e2e8f0;
+        }
+        .wp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(56, 189, 248, 0.3); padding-bottom: 10px; }
+        .wp-header h2 { margin: 0; color: #38bdf8; font-size: 20px; }
+        .wp-close-btn {
+            background: rgba(239, 68, 68, 0.8); color: white; border: none; padding: 6px 14px;
+            border-radius: 6px; font-weight: bold; cursor: pointer; transition: transform 0.2s;
+        }
+        .wp-close-btn:hover { transform: scale(1.05); }
+        
+        .wp-content {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .wp-content h3 { color: #38bdf8; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 5px; margin-top: 20px; font-size: 16px; }
+        .wp-content ul { padding-left: 20px; }
+        .wp-content li { margin-bottom: 8px; }
+        .legal-notice {
+            font-size: 11px; color: #94a3b8; border-top: 1px dashed rgba(148, 163, 184, 0.3);
+            margin-top: 20px; padding-top: 10px; text-align: center;
+        }
+
+        /* --- МОДАЛЬНЕ ВІКНО КОМІКСУ / DAO --- */
+        .comic-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .comic-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .comic-modal-box {
+            background: rgba(15, 23, 42, 0.98); border: 1px solid rgba(56, 189, 248, 0.4);
+            padding: 30px; border-radius: 16px; width: 450px; text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.9); position: relative;
+        }
+
+        .modal-close-btn {
+            background: rgba(239, 68, 68, 0.8); color: white; padding: 10px 20px;
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: transform 0.2s;
+        }
+        .modal-close-btn:hover { transform: scale(1.05); }
+
+        /* --- ІНТЕРФЕЙСНА ПАНЕЛЬ --- */
+        .ui-panel {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            padding: 10px 20px; width: auto; min-width: 450px; z-index: 50;
+        }
+        #token-stats {
+            font-size: 16px; color: #f59e0b; margin-bottom: 4px; font-weight: bold;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7);
+        }
+        #status-text {
+            font-size: 17px; font-weight: bold; margin-bottom: 12px; color: #4ade80;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7);
+        }
+        body.is-night #status-text { color: #f87171; }
+        .btn-group { display: flex; justify-content: center; gap: 12px; align-items: center; }
+        .buy-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white; padding: 10px 22px; font-size: 15px; font-weight: bold;
+            border: none; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); transition: transform 0.2s; z-index: 50;
+        }
+        .buy-btn:hover { transform: scale(1.05); }
+        .sound-btn {
+            background: rgba(15, 23, 42, 0.6); color: white; padding: 10px 16px; font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: background 0.2s; z-index: 50;
+        }
+        .sound-btn:hover { background: rgba(15, 23, 42, 0.9); }
+        .time-badge {
+            position: fixed; bottom: 30px; left: 30px; padding: 8px 14px;
+            display: flex; align-items: center; gap: 10px; font-family: monospace;
+            font-size: 18px; font-weight: bold; color: #38bdf8;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7); z-index: 50;
+        }
+        .moon-icon { font-size: 22px; transition: transform 0.5s ease; }
+        body.is-night .moon-icon { transform: rotate(360deg); }
+
+        /* --- СОЦ МЕРЕЖІ СПІЛЬНОТИ --- */
+        .social-links {
+            position: absolute; bottom: 65px; right: 25px; display: flex; gap: 10px; z-index: 50;
+        }
+        .social-btn {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; font-size: 16px; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        .social-btn svg {
+            width: 20px; height: 20px; fill: currentColor;
+        }
+        .social-btn:hover {
+            transform: scale(1.15);
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="interactive-scene">
+        
+        <!-- Меню будівель -->
+        <a href="#barn" class="building-spot" style="left: 5.0%; top: 39.8%; width: 14.1%; height: 35.2%;">
+            <span class="building-name">Barn</span>
+        </a>
+        <a href="#two-story-house" class="building-spot" style="left: 28.1%; top: 25.0%; width: 13.0%; height: 39.8%;">
+            <span class="building-name">Two-Story House</span>
+        </a>
+        <a href="#shop" class="building-spot" style="left: 43.2%; top: 35.2%; width: 14.1%; height: 27.8%;">
+            <span class="building-name">General Store (Shop)</span>
+        </a>
+        <!-- Школа відкриває текстовий Whitepaper -->
+        <a href="javascript:void(0);" onclick="openWhitepaper()" class="building-spot" style="left: 57.3%; top: 25.0%; width: 10.9%; height: 25.0%;">
+            <span class="building-name">School (Whitepaper)</span>
+        </a>
+        <a href="#swap" class="building-spot" style="left: 61.0%; top: 58.3%; width: 12.0%; height: 24.1%;">
+            <span class="building-name">Gas Station (Swap)</span>
+        </a>
+        <a href="javascript:void(0);" onclick="openComicModal()" class="building-spot" style="left: 68.8%; top: 12.0%; width: 21.9%; height: 30.6%;">
+            <span class="building-name">Main Mansion (Interactive Comic)</span>
+        </a>
+        <a href="#heal" class="building-spot" style="left: 78.5%; top: 44.4%; width: 11.5%; height: 32.4%;">
+            <span class="building-name">Clinic (Heal)</span>
+        </a>
+
+        <!-- Соціальні мережі всередині мапи знизу справа -->
+        <div class="social-links">
+            <a href="https://t.me/+6fZWSulxpEE0Zjli" target="_blank" class="social-btn" title="Telegram">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.02-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.25.38-.51 1.05-.78 4.11-1.79 6.85-2.97 8.22-3.55 3.91-1.67 4.72-1.96 5.25-1.97.12 0 .39.03.56.17.15.12.19.28.21.4-.01.07.01.23-.01.37z"/></svg>
+            </a>
+            <a href="https://x.com/QueSeraOriginal" target="_blank" class="social-btn" title="Twitter / X">𝕏</a>
+        </div>
+
+    </div>
+
+    <!-- Модальне вікно Whitepaper (Текстовий гайд) -->
+    <div class="wp-modal-overlay" id="whitepaperModal">
+        <div class="wp-modal-box">
+            <div class="wp-header">
+                <h2>QSS: OFFICIAL SURVIVAL & TOKENOMICS GUIDE</h2>
+                <button class="wp-close-btn" onclick="closeWhitepaper()">Close X</button>
+            </div>
+            <div class="wp-content">
+                <h3>📜 CREDITS & ARCHITECTURE</h3>
+                <ul>
+                    <li><b>Project Title:</b> Que Sera Sera ($QSS)</li>
+                    <li><b>Genre:</b> Post-Apocalyptic Web3 Survival & Interactive Narrative Ecosystem</li>
+                    <li><b>Core Token:</b> $QSS (Fixed Total Supply: 1,000,000,000 tokens)</li>
+                    <li><b>Ecosystem Engine:</b> Decentralized Estate Map, Character Slot Minting, and Community-Driven Story Progression</li>
+                </ul>
+
+                <h3>⚙️ TOKENOMICS & SUPPLY SPECIFICATION</h3>
+                <p>The economic structure of <b>$QSS</b> is built for absolute transparency, long-term ecosystem viability, and zero inflationary pressure.</p>
+                <ul>
+                    <li><b>Total Token Supply:</b> 1,000,000,000 $QSS (Fixed hard-cap, no minting or burning mechanisms after deployment).</li>
+                    <li><b>Ecosystem Utility:</b> 
+                        <ul>
+                            <li><b>Estate Character Slots:</b> Tokens are utilized by community members to mint, claim, and occupy exclusive survivor slots across the interactive map infrastructure.</li>
+                            <li><b>Treasury & Community Fund:</b> Proceeds collected from mints and platform services are routed directly into the <b>DAO Treasury</b> to support continuous development, marketing campaigns, exchange listings, and community rewards.</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h3>🏛️ ECOSYSTEM ZONES & FUNCTIONALITY</h3>
+                <ul>
+                    <li><b>House (Mint Infrastructure):</b> The primary hub where survivors deploy and register their unique character avatars into the estate registry.</li>
+                    <li><b>Main Mansion (DAO & Interactive Lore):</b> The governing headquarters where token holders steer the narrative. Plot chapters unlock dynamically based on market capitalization milestones ($200k, $600k), with story twists decided collectively via Telegram community voting.</li>
+                    <li><b>Schoolhouse (Documentation):</b> The institutional repository housing the official project lore, whitepaper, and survival guidelines.</li>
+                    <li><b>Gas Station (DEX Swap):</b> The decentralized exchange gateway enabling instant, friction-free acquisition of $QSS tokens.</li>
+                    <li><b>Barn & General Store:</b> Core infrastructure components supporting the day-to-day survival logistics of the estate family.</li>
+                </ul>
+
+                <div class="legal-notice">
+                    All rights reserved © 2026 QSS Ecosystem. The $QSS token is designed strictly for utility, governance participation, and interactive community engagement within the simulation framework. Build your future wisely.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно Main Mansion (Комікс) -->
+    <div class="comic-modal-overlay" id="comicModal">
+        <div class="comic-modal-box">
+            <h3 style="color: #38bdf8; margin-top: 0;">📖 QSS Interactive Comic & Lore</h3>
+            <p style="font-size: 14px; color: #94a3b8; line-height: 1.5;">
+                Hold $QSS, vote in our Telegram group on the plot twists, and push the market cap to unlock new chapters!
+            </p>
+            
+            <div style="margin: 20px 0; text-align: left;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: #cbd5e1;">
+                    <span>Chapter 2 Unlock ($200k Cap)</span>
+                    <span id="market-cap-text" style="color: #38bdf8; font-weight: bold;">$65,000 / $200,000</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 10px; border-radius: 5px; overflow: hidden;">
+                    <div id="progress-bar-fill" style="background: linear-gradient(90deg, #38bdf8, #22c55e); width: 32.5%; height: 100%;"></div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                <a href="https://t.me/+6fZWSulxpEE0Zjli" target="_blank" style="background: #0ea5e9; color: white; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);">Vote in Telegram Group 🚀</a>
+                <button class="modal-close-btn" onclick="closeComicModal()" style="width: 100%; padding: 10px;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Інтерфейс -->
+    <div class="time-badge">
+        <span id="moon-element" class="moon-icon">☀️</span>
+        <span id="header-clock">08:00 AM</span>
+    </div>
+
+    <div class="ui-panel">
+        <div id="token-stats">💎 $QSS Price: Loading... | Trend: Analyzing...</div>
+        <div id="status-text">☀️ Morning: The estate is peaceful.</div>
+        
+        <div class="btn-group">
+            <button class="buy-btn" onclick="buyToken()">BUY $QSS</button>
+            <button id="sound-toggle-btn" class="sound-btn" onclick="toggleAudio()">🔊 Sound</button>
+        </div>
+    </div>
+
+    <!-- Підключення фонового саундтреку QSS.mp3 -->
+    <audio id="bg-audio" src="QSS.mp3" loop></audio>
+
+    <script>
+        let gameMinutesTotal = 8 * 60; 
+        let isNightTime = false;
+        let bellRungToday = false; 
+        let soundMuted = true;
+        let isBearishMarket = false;
+
+        const bgAudio = document.getElementById('bg-audio');
+        const soundBtn = document.getElementById('sound-toggle-btn');
+        const tokenStats = document.getElementById('token-stats');
+        const headerClock = document.getElementById('header-clock');
+        const moonElement = document.getElementById('moon-element');
+
+        function openWhitepaper() {
+            document.getElementById('whitepaperModal').classList.add('active');
+        }
+        function closeWhitepaper() {
+            document.getElementById('whitepaperModal').classList.remove('active');
+        }
+
+        function openComicModal() {
+            document.getElementById('comicModal').classList.add('active');
+        }
+        function closeComicModal() {
+            document.getElementById('comicModal').classList.remove('active');
+        }
+
+        function playDeepChurchBell() {
+            if (soundMuted) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                [130.81, 220.0, 329.63].forEach(freq => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3.5);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 3.5);
+                });
+            } catch (e) {}
+        }
+
+        // Синтезований рик зомбі при настанні ночі
+        function playZombieGrowl() {
+            if (soundMuted) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const filter = ctx.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(75, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(35, ctx.currentTime + 1.5);
+                osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 2.5);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(250, ctx.currentTime);
+
+                gain.gain.setValueAtTime(0.01, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.4);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3.0);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 3.0);
+            } catch (e) {}
+        }
+
+        async function fetchTokenPrice() {
+            let change = (Math.random() - 0.48) * 0.0002;
+            let lastPrice = 0.0045;
+            let currentPrice = Math.max(0.001, lastPrice + change);
+            let diffPercent = ((currentPrice - lastPrice) / lastPrice) * 100;
+            isBearishMarket = diffPercent < 0;
+            tokenStats.innerHTML = `💎 $QSS: $${currentPrice.toFixed(5)} | ${!isBearishMarket ? "🟢" : "🔴"} ${diffPercent.toFixed(2)}%`;
+        }
+
+        fetchTokenPrice();
+        setInterval(fetchTokenPrice, 10000);
+
+        function toggleAudio() {
+            soundMuted = !soundMuted;
+            soundBtn.innerText = soundMuted ? "🔊 Sound" : "🔇 Mute";
+            if (!soundMuted) {
+                bgAudio.play().catch(e => console.log("Audio playback blocked by browser policy", e));
+            } else {
+                bgAudio.pause();
+            }
+        }
+
+        function updateGameClock() {
+            gameMinutesTotal += 10;
+            if (gameMinutesTotal >= 24 * 60) { gameMinutesTotal = 0; bellRungToday = false; }
+
+            const totalHours = Math.floor(gameMinutesTotal / 60);
+            const minutes = gameMinutesTotal % 60;
+            const ampm = totalHours >= 12 ? 'PM' : 'AM';
+            const hours12 = totalHours % 12 === 0 ? 12 : totalHours % 12;
+            
+            headerClock.innerText = `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+
+            if (totalHours === 19 && minutes === 0 && !bellRungToday) {
+                bellRungToday = true;
+                moonElement.innerText = "🌔";
+                document.getElementById("status-text").innerText = "🔔 07:00 PM — Evening curfew!";
+                document.getElementById("status-text").style.color = "#f59e0b";
+                playDeepChurchBell();
+            }
+
+            const isCurrentlyNight = (totalHours >= 22 || totalHours < 8);
+            if (isCurrentlyNight !== isNightTime) {
+                isNightTime = isCurrentlyNight;
+                document.body.className = isNightTime ? "is-night" : "";
+                moonElement.innerText = isNightTime ? "🌕" : "☀️";
+                document.getElementById("status-text").innerText = isNightTime ? "🚨 Night! Zombies are roaming." : "☀️ Morning! Peaceful day.";
+                document.getElementById("status-text").style.color = isNightTime ? "#f87171" : "#4ade80";
+                
+                if (isNightTime) {
+                    playZombieGrowl();
+                }
+            }
+        }
+        setInterval(updateGameClock, 1000);
+
+        async function buyToken() { window.open("https://dex.robinhoodchain.com/#/swap?outputCurrency=ВАЖ_АДРЕС", "_blank"); }
+    </script>
+</body>
+</html>
