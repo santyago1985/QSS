@@ -348,9 +348,14 @@
     <audio id="bg-audio" src="QSS.mp3" loop></audio>
 
     <script>
-        let gameMinutesTotal = 8 * 60; 
+        // Читаємо збережений час із localStorage або ставимо 8:00 (8 * 60 хвилин) за замовчуванням
+        let savedMinutes = localStorage.getItem('qss_game_minutes');
+        let gameMinutesTotal = savedMinutes !== null ? parseInt(savedMinutes, 10) : 8 * 60; 
+
+        let savedBell = localStorage.getItem('qss_bell_rung');
+        let bellRungToday = savedBell === 'true'; 
+
         let isNightTime = false;
-        let bellRungToday = false; 
         let soundMuted = true;
         let isBearishMarket = false;
 
@@ -444,9 +449,45 @@
             }
         }
 
+        // Оновлюємо стан одразу при завантаженні сторінки, щоб фон та статус відповідали збереженому часу
+        function applyTimeState(initialCheck = false) {
+            const totalHours = Math.floor(gameMinutesTotal / 60);
+            const minutes = gameMinutesTotal % 60;
+            const ampm = totalHours >= 12 ? 'PM' : 'AM';
+            const hours12 = totalHours % 12 === 0 ? 12 : totalHours % 12;
+            
+            headerClock.innerText = `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+
+            const isCurrentlyNight = (totalHours >= 22 || totalHours < 8);
+            isNightTime = isCurrentlyNight;
+            document.body.className = isNightTime ? "is-night" : "";
+            moonElement.innerText = isNightTime ? "🌕" : "☀️";
+            
+            if (isNightTime) {
+                document.getElementById("status-text").innerText = "🚨 Night! Zombies are roaming.";
+                document.getElementById("status-text").style.color = "#f87171";
+            } else if (totalHours >= 19 && totalHours < 22) {
+                document.getElementById("status-text").innerText = "🔔 Evening curfew!";
+                document.getElementById("status-text").style.color = "#f59e0b";
+            } else {
+                document.getElementById("status-text").innerText = "☀️ Morning! Peaceful day.";
+                document.getElementById("status-text").style.color = "#4ade80";
+            }
+        }
+
+        // Застосовуємо час одразу під час завантаження
+        applyTimeState();
+
         function updateGameClock() {
             gameMinutesTotal += 10;
-            if (gameMinutesTotal >= 24 * 60) { gameMinutesTotal = 0; bellRungToday = false; }
+            if (gameMinutesTotal >= 24 * 60) { 
+                gameMinutesTotal = 0; 
+                bellRungToday = false; 
+            }
+
+            // Зберігаємо поточний прогрес у пам'ять браузера
+            localStorage.setItem('qss_game_minutes', gameMinutesTotal);
+            localStorage.setItem('qss_bell_rung', bellRungToday);
 
             const totalHours = Math.floor(gameMinutesTotal / 60);
             const minutes = gameMinutesTotal % 60;
@@ -457,6 +498,7 @@
 
             if (totalHours === 19 && minutes === 0 && !bellRungToday) {
                 bellRungToday = true;
+                localStorage.setItem('qss_bell_rung', bellRungToday);
                 moonElement.innerText = "🌔";
                 document.getElementById("status-text").innerText = "🔔 07:00 PM — Evening curfew!";
                 document.getElementById("status-text").style.color = "#f59e0b";
@@ -469,7 +511,7 @@
                 document.body.className = isNightTime ? "is-night" : "";
                 moonElement.innerText = isNightTime ? "🌕" : "☀️";
                 document.getElementById("status-text").innerText = isNightTime ? "🚨 Night! Zombies are roaming." : "☀️ Morning! Peaceful day.";
-                document.getElementById("status-text").style.color = isNightTime ? "#f87171" : "#4ade80";
+                document.getElementById("status-text").style.color = isNightTime ? " #f87171" : "#4ade80";
                 
                 if (isNightTime) {
                     playZombieGrowl();
